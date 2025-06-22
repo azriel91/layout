@@ -130,6 +130,40 @@ impl Element {
         Self::create_connector("", &StyleAttr::simple(), dir)
     }
 
+    pub fn placeholder(orientation: Orientation) -> Element {
+        Element {
+            shape: ShapeKind::None,
+            look: StyleAttr::simple(),
+            orientation,
+            pos: Position::new(
+                Point::zero(),
+                Point::zero(),
+                Point::zero(),
+                Point::splat(PADDING),
+            ),
+            properties: Option::None,
+        }
+    }
+
+    pub fn create_subgraph(
+        orientation: Orientation,
+        name: String,
+        look: &StyleAttr,
+    ) -> Element {
+        Element {
+            shape: ShapeKind::Box(name),
+            look: look.clone(),
+            orientation,
+            pos: Position::new(
+                Point::new(25., 25.),
+                Point::new(20., 20.),
+                Point::new(25., 25.),
+                Point::splat(PADDING),
+            ),
+            properties: Option::None,
+        }
+    }
+
     // Make the center of the shape point to \p to.
     pub fn move_to(&mut self, to: Point) {
         self.pos.move_to(to)

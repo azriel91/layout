@@ -447,12 +447,17 @@ impl<'a> BK<'a> {
         // For each node.
         for node in self.vg.iter_nodes() {
             pos_list.clear();
+            let node_subgraph_idx = self.vg.dag.parent_subgraph_idx(node);
 
             // for each predecessor:
             for pred in self.vg.preds(node) {
                 // Make sure that this is a valid edge. We swap the direction of the
-                // edges because the list is a collection of successor edges.
-                if !valid_edges.contains(&(*pred, node)) {
+                // edges because the list is a collection of successor edges. or dont belong to the
+                // same subgrpah
+                if !valid_edges.contains(&(*pred, node))
+                    || self.vg.dag.parent_subgraph_idx(*pred)
+                        != node_subgraph_idx
+                {
                     continue;
                 }
                 pos_list.push(*pred)

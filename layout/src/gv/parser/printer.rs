@@ -71,7 +71,7 @@ fn print_stmt(stmt: &ast::Stmt, indent: usize) {
         ast::Stmt::Attribute(a) => {
             print_att(a, indent);
         }
-        ast::Stmt::SubGraph(g) => {
+        ast::Stmt::Subgraph(g) => {
             print_graph(g, indent);
         }
     }
