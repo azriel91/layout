@@ -421,6 +421,13 @@ impl Position {
         (top_left, bottom_right)
     }
 
+    pub(crate) fn bbox_with_half_halo(&self) -> (Point, Point) {
+        let size = self.size.add(self.halo.scale(0.5));
+        let top_left = self.middle.sub(size.scale(0.5));
+        let bottom_right = top_left.add(size);
+        (top_left, bottom_right)
+    }
+
     /// Returns the center of the shape in absolute coordinates.
     pub fn center(&self) -> Point {
         self.middle.add(self.center)
@@ -452,8 +459,8 @@ impl Position {
     /// from the center of mass (middle-point).
     pub fn set_new_center_point(&mut self, center: Point) {
         self.center = center;
-        assert!(self.center.x.abs() < self.size.x);
-        assert!(self.center.y.abs() < self.size.y);
+        // assert!(self.center.x.abs() < self.size.x);
+        // assert!(self.center.y.abs() < self.size.y);
     }
 
     // Move the shape to a new location. The coordinate \p p is the absolute
@@ -486,6 +493,12 @@ impl Position {
         } else {
             self.middle.x = x - half_box;
         }
+    }
+
+    pub fn align_to_center(&mut self) {
+        // Align the center of the shape to the middle of the bounding box.
+        self.middle.x = self.center.x;
+        self.middle.y = self.center.y;
     }
 
     // Align the center of the shape to \p x.

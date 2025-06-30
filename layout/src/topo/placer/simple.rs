@@ -1,7 +1,11 @@
 //! This is a simple pass that just places the boxes in a row, one after the
 //! other.
 
+use core::f64;
+
 use super::EPSILON;
+use crate::adt::dag::SubgraphHandle;
+use crate::core::format::Visible;
 use crate::core::geometry::Point;
 use crate::topo::layout::VisualGraph;
 
@@ -65,5 +69,5 @@ pub(crate) fn do_it(vg: &mut VisualGraph) {
 
     // Assign X coordinates. Using the rank order from the topological sort
     // is a good starting point.
-    assign_x_coordinates(vg);
+    let _place_to_coords = assign_x_coordinates(vg);
 }

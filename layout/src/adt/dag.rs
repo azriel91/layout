@@ -66,6 +66,51 @@ impl UnitHandle {
             }
         }
     }
+
+    pub(crate) fn get_x_min_idx(&self, dag: &DAG) -> usize {
+        match self {
+            UnitHandle::Node(node) => {
+                // dag.level_subgraph(self.clone())
+                dag.level(node.clone())
+            }
+            UnitHandle::Subgraph(subgraph) => {
+                dag.subgraphs[subgraph.idx].x_0
+            }
+        }
+    }
+
+    pub(crate) fn get_y_min_idx(&self, dag: &DAG) -> usize {
+        match self {
+            UnitHandle::Node(node) => {
+                dag.level(node.clone())
+            }
+            UnitHandle::Subgraph(subgraph) => {
+                dag.subgraphs[subgraph.idx].y_0
+            }
+        }
+    }
+
+    pub(crate) fn get_x_max_idx(&self, dag: &DAG) -> usize {
+        match self {
+            UnitHandle::Node(node) => {
+                dag.level(node.clone())
+            }
+            UnitHandle::Subgraph(subgraph) => {
+                dag.subgraphs[subgraph.idx].x_0 + dag.subgraphs[subgraph.idx].width - 1
+            }
+        }
+    }
+
+    pub(crate) fn get_y_max_idx(&self, dag: &DAG) -> usize {
+        match self {
+            UnitHandle::Node(node) => {
+                dag.level(node.clone())
+            }
+            UnitHandle::Subgraph(subgraph) => {
+                dag.subgraphs[subgraph.idx].y_0 + dag.subgraphs[subgraph.idx].height - 1
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -155,12 +200,16 @@ impl TraverseRank {
 
 #[derive(Debug, Clone)]
 pub struct Subgraph {
-    nodes: Vec<NodeHandle>,
+    pub(crate) nodes: Vec<NodeHandle>,
     pub(crate) subgraphs: Vec<SubgraphHandle>,
     parent_subgraph_idx: SubgraphHandle,
     successors_u: Vec<UnitHandle>,
     predecesssors_u: Vec<UnitHandle>,
     pub(crate) ranks: TraverseRank,
+    pub(crate) x_0: usize,
+    pub(crate) y_0: usize,
+    pub(crate) width: usize,
+    pub(crate) height: usize,
 }
 
 #[derive(Copy, Clone, Default, PartialEq, PartialOrd, Eq, Ord, Hash, Debug)]
@@ -356,6 +405,7 @@ impl DAG {
                                         // now increase x until we find an empty spot in the rank
                                         let x =
                                             parent_rank.row(y).clone().len();
+                                        // check if there is any intersection between
                                         return (x, y);
                                     }
                                 }
@@ -466,6 +516,11 @@ impl DAG {
             predecesssors_u: Vec::new(),
             parent_subgraph_idx: subgraph_idx,
             ranks: TraverseRank::new(),
+            // TODO: initial values of 0 could not be correct to do
+            x_0: 0,
+            y_0: 0,
+            width: 1,
+            height: 1,
         };
         self.subgraphs.push(subgraph);
         let subgraph_handle = SubgraphHandle::new(self.subgraphs.len() - 1);
@@ -849,7 +904,7 @@ impl DAG {
         &mut self,
         parent_subgraph_idx: SubgraphHandle,
         subgraph_idx: SubgraphHandle,
-        _x_offset: usize,
+        x_offset: usize,
         y_offset: usize,
         placed: &mut HashMap<NodeHandle, Option<(usize, usize)>>,
     ) {
@@ -870,6 +925,12 @@ impl DAG {
                         .row(level + y_offset)
                         .len();
                     placed.insert(node, Some((x, level + y_offset)));
+                } else if let UnitHandle::Subgraph(subgraph_handle) =
+                    elem
+                {
+                    // We are moving a subgraph.
+                    self.subgraphs[subgraph_handle.idx].x_0 += x_offset;
+                    self.subgraphs[subgraph_handle.idx].y_0 += y_offset;
                 }
             }
         }

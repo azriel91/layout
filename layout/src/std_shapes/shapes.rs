@@ -4,6 +4,7 @@
 //! This includes things like font size, and color.
 
 use crate::core::base::Orientation;
+use crate::core::color::Color;
 use crate::core::format::Visible;
 use crate::core::geometry::{Point, Position};
 use crate::core::style::{LineStyleKind, StyleAttr};
@@ -150,6 +151,10 @@ impl Element {
         name: String,
         look: &StyleAttr,
     ) -> Element {
+        let mut look = look.clone();
+        look.line_color = Color::from_name("black").unwrap();
+        // look.fill_color = Color::from_name("blue");
+        println!("Creating subgraph with look: {:?}", look);
         Element {
             shape: ShapeKind::Box(name),
             look: look.clone(),

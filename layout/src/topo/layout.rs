@@ -13,6 +13,7 @@ use crate::core::color::Color;
 use crate::core::format::RenderBackend;
 use crate::core::format::Renderable;
 use crate::core::format::Visible;
+use crate::core::geometry::Point;
 use crate::core::geometry::Position;
 use crate::core::style::StyleAttr;
 use crate::std_shapes::render::*;
@@ -29,7 +30,7 @@ use super::placer::Placer;
 pub struct VisualGraph {
     // Holds all of the elements in the graph.
     nodes: Vec<Element>,
-    subgraphs: Vec<Element>,
+    pub(crate) subgraphs: Vec<Element>,
     // The arrows and the list of elements that they visits.
     edges: Vec<(Arrow, Vec<NodeHandle>, Vec<UnitHandle>)>,
     // Contains a list of self-edges. We use this as a temporary storage during
@@ -178,6 +179,7 @@ impl VisualGraph {
         // Draw the subgraphs.
         for subgraph in &self.subgraphs {
             subgraph.render(debug, rb);
+            println!("rendering subgraph: {:?}", subgraph.position());
         }
     }
 }
@@ -192,6 +194,7 @@ impl VisualGraph {
     ) {
         self.lower(disable_opt);
         self.dag.last_rank_expansion();
+        println!("Last rank expansion done.");
         Placer::new(self).layout(disable_layout);
         self.render(debug_mode, rb);
     }
@@ -202,6 +205,7 @@ impl VisualGraph {
         self.to_valid_dag();
         self.split_text_edges();
         self.expand(SubgraphHandle::new(0), disable_optimizations);
+        println!("Expanding subgraph 0 done.");
 
         for elem in self.dag.iter() {
             self.element_mut(elem).resize();
@@ -249,10 +253,25 @@ impl VisualGraph {
                 }
             }
         }
+        let mut x_min_idx = 0;
+        let mut x_min = usize::MAX;
+        let mut y_min_idx = 0;
+        let mut y_min = usize::MAX;
+        let mut x_max_idx = 0;
+        let mut x_max = 0;
+        let mut y_max_idx = 0;
+        let mut y_max = 0;
+
         for level in order {
             let (x_offset, y_offset) =
                 self.dag
                     .determine_loc_nodehandle(subgraph_idx, level, &placed);
+            println!(
+                "Placing {:?} at ({}, {})",
+                level,
+                x_offset,
+                y_offset
+            );
             match level {
                 UnitHandle::Node(n) => {
                     self.dag.add_element_to_rank_subgraph(
@@ -275,7 +294,52 @@ impl VisualGraph {
                     );
                 }
             }
+
+            if x_offset < x_min {
+                x_min = x_offset;
+                x_min_idx = level.get_x_min_idx(&self.dag);
+            }
+            if y_offset < y_min {
+                y_min = y_offset;
+                y_min_idx = level.get_y_min_idx(&self.dag);
+            }
+
+            if x_offset > x_max {
+                x_max = x_offset;
+                x_max_idx = level.get_x_max_idx(&self.dag);
+            }
+
+            if y_offset > y_max {
+                y_max = y_offset;
+                y_max_idx = level.get_y_max_idx(&self.dag);
+            }
         }
+
+        // self.dag.subgraphs[subgraph_idx.idx].x_min_idx = x_min_idx;
+        // self.dag.subgraphs[subgraph_idx.idx].y_min_idx = y_min_idx;
+        // self.dag.subgraphs[subgraph_idx.idx].x_max_idx = x_max_idx;
+        // self.dag.subgraphs[subgraph_idx.idx].y_max_idx = y_max_idx;
+        self.dag.subgraphs[subgraph_idx.idx].x_0 = x_min;
+        self.dag.subgraphs[subgraph_idx.idx].y_0 = y_min;
+        self.dag.subgraphs[subgraph_idx.idx].width = x_max - x_min + 30;
+        self.dag.subgraphs[subgraph_idx.idx].height = y_max - y_min + 1;
+        // println!("Subgraph {}: x_min_idx = {}, y_min_idx = {}, x_max_idx = {}, y_max_idx = {}",
+        //     subgraph_idx.idx, x_min_idx, y_min_idx, x_max_idx, y_max_idx
+        // );
+        // println!("width = {}, height = {}",
+        //     self.dag.subgraphs[subgraph_idx.idx].width,
+        //     self.dag.subgraphs[subgraph_idx.idx].height
+        // );
+
+        // now resize subgraph 
+        self.subgraphs[subgraph_idx.idx].position_mut().set_size(
+            Point::new(
+                self.dag.subgraphs[subgraph_idx.idx].width as f64,
+                self.dag.subgraphs[subgraph_idx.idx].height as f64,
+            ),
+        );
+        self.subgraphs[subgraph_idx.idx].resize();
+        // self.subgraph_into_rectangular(subgraph_idx);
     }
 
     /// Flip the edges in the graph to create a valid dag.

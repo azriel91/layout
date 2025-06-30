@@ -1,0 +1,65 @@
+digraph deep_nested_subgraph {
+    // Test case: Deep nesting (3 levels) with multiple branches
+    
+    subgraph cluster_level1 {
+        label = "Level 1 Container";
+        style = filled;
+        color = lightgray;
+        
+        level1_node [label="Level 1"];
+        
+        subgraph cluster_level2a {
+            label = "Level 2A Container";
+            style = filled;
+            color = lightblue;
+            
+            level2a_node [label="Level 2A"];
+            
+            subgraph cluster_level3a {
+                label = "Level 3A Container";
+                style = filled;
+                color = lightgreen;
+                
+                level3a_1 [label="Level 3A-1"];
+                level3a_2 [label="Level 3A-2"];
+                
+                level3a_1 -> level3a_2;
+            }
+            
+            level2a_node -> level3a_1;
+        }
+        
+        subgraph cluster_level2b {
+            label = "Level 2B Container";
+            style = filled;
+            color = lightyellow;
+            
+            level2b_node [label="Level 2B"];
+            
+            subgraph cluster_level3b {
+                label = "Level 3B Container";
+                style = filled;
+                color = lightcoral;
+                
+                level3b_1 [label="Level 3B-1"];
+                level3b_2 [label="Level 3B-2"];
+                level3b_3 [label="Level 3B-3"];
+                
+                level3b_1 -> level3b_2 -> level3b_3;
+            }
+            
+            level2b_node -> level3b_1;
+        }
+        
+        level1_node -> level2a_node;
+        level1_node -> level2b_node;
+    }
+    
+    // Cross-level connections
+    root -> level1_node;
+    level3a_2 -> level3b_2;
+    level3b_3 -> sink;
+    
+    root [shape=triangle];
+    sink [shape=invtriangle];
+}
