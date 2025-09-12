@@ -591,6 +591,9 @@ impl Renderable for Element {
                 );
             }
             ShapeKind::Box(text) => {
+                // println!("rendering box with name: {}", text);
+                // println!("pos: {:?}", self.pos);
+                // self.pos.
                 canvas.draw_rect(
                     self.pos.bbox(false).0,
                     self.pos.size(false),

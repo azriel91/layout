@@ -19,7 +19,7 @@ fn test_main(n_node: usize, _n_edge: usize) {
             Orientation::LeftToRight,
             Point::zero(),
         );
-        gb.add_node(elem);
+        // gb.add_node(elem);
     }
     let t0 = std::time::Instant::now();
 

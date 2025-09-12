@@ -1,0 +1,176 @@
+digraph complex_hierarchy {
+    // Test case: Complex subgraph hierarchies with multiple patterns
+    // Mixing different structural patterns: sequential, parallel, and hierarchical
+    
+    subgraph cluster_system {
+        label = "System Architecture";
+        style = filled;
+        color = lightgray;
+        
+        // Frontend subsystem
+        subgraph cluster_frontend {
+            label = "Frontend Layer";
+            style = filled;
+            color = lightblue;
+            
+            subgraph cluster_ui {
+                label = "UI Components";
+                style = filled;
+                color = lightcyan;
+                
+                ui_header [label="Header"];
+                ui_sidebar [label="Sidebar"];
+                ui_content [label="Content"];
+                ui_footer [label="Footer"];
+                
+                ui_header -> ui_content;
+                ui_sidebar -> ui_content;
+                ui_content -> ui_footer;
+            }
+            
+            subgraph cluster_state {
+                label = "State Management";
+                style = filled;
+                color = lightsteelblue;
+                
+                state_store [label="Store"];
+                state_actions [label="Actions"];
+                state_reducers [label="Reducers"];
+                
+                state_actions -> state_reducers -> state_store;
+            }
+            
+            frontend_controller [label="Frontend Controller"];
+            frontend_controller -> ui_header;
+            state_store -> frontend_controller;
+        }
+        
+        // Backend subsystem
+        subgraph cluster_backend {
+            label = "Backend Layer";
+            style = filled;
+            color = lightgreen;
+            
+            subgraph cluster_api {
+                label = "API Gateway";
+                style = filled;
+                color = lightseagreen;
+                
+                api_auth [label="Authentication"];
+                api_routing [label="Routing"];
+                api_validation [label="Validation"];
+                
+                api_auth -> api_validation -> api_routing;
+            }
+            
+            subgraph cluster_services {
+                label = "Microservices";
+                style = filled;
+                color = lightgoldenrodyellow;
+                
+                service_user [label="User Service"];
+                service_order [label="Order Service"];
+                service_payment [label="Payment Service"];
+                service_inventory [label="Inventory Service"];
+                
+                // Service mesh connections
+                service_user -> service_order;
+                service_order -> service_payment;
+                service_order -> service_inventory;
+                service_payment -> service_inventory;
+            }
+            
+            subgraph cluster_database {
+                label = "Data Layer";
+                style = filled;
+                color = mistyrose;
+                
+                subgraph cluster_primary_db {
+                    label = "Primary Database";
+                    style = filled;
+                    color = lightpink;
+                    
+                    db_users [label="Users DB"];
+                    db_orders [label="Orders DB"];
+                    db_payments [label="Payments DB"];
+                }
+                
+                subgraph cluster_cache {
+                    label = "Cache Layer";
+                    style = filled;
+                    color = lavenderblush;
+                    
+                    cache_redis [label="Redis"];
+                    cache_memcached [label="Memcached"];
+                    
+                    cache_redis -> cache_memcached;
+                }
+                
+                db_backup [label="Backup System"];
+                db_users -> db_backup;
+                db_orders -> db_backup;
+                db_payments -> db_backup;
+            }
+            
+            // Backend internal connections
+            api_routing -> service_user;
+            api_routing -> service_order;
+            service_user -> db_users;
+            service_order -> db_orders;
+            service_payment -> db_payments;
+            service_user -> cache_redis;
+            service_order -> cache_redis;
+        }
+        
+        // Infrastructure layer
+        subgraph cluster_infrastructure {
+            label = "Infrastructure";
+            style = filled;
+            color = lightcoral;
+            
+            subgraph cluster_monitoring {
+                label = "Monitoring";
+                style = filled;
+                color = lightsalmon;
+                
+                monitor_metrics [label="Metrics"];
+                monitor_logs [label="Logs"];
+                monitor_alerts [label="Alerts"];
+                
+                monitor_metrics -> monitor_alerts;
+                monitor_logs -> monitor_alerts;
+            }
+            
+            subgraph cluster_security {
+                label = "Security";
+                style = filled;
+                color = lightslategray;
+                
+                security_firewall [label="Firewall"];
+                security_encryption [label="Encryption"];
+                security_audit [label="Audit"];
+                
+                security_firewall -> security_encryption -> security_audit;
+            }
+            
+            infra_load_balancer [label="Load Balancer"];
+            infra_load_balancer -> security_firewall;
+        }
+        
+        // System-level connections
+        system_gateway [label="System Gateway"];
+    }
+    
+    // External connections
+    external_users -> system_gateway;
+    system_gateway -> infra_load_balancer;
+    infra_load_balancer -> frontend_controller;
+    frontend_controller -> api_auth;
+    monitor_alerts -> external_admin;
+    security_audit -> external_compliance;
+    
+    // External nodes
+    external_users [shape=ellipse, label="External Users"];
+    external_admin [shape=ellipse, label="System Admin"];
+    external_compliance [shape=ellipse, label="Compliance"];
+}

@@ -1,0 +1,38 @@
+digraph nested_subgraph {
+    // Test case: Basic nested subgraph structure
+    // Two level nesting with nodes at different levels
+    
+    subgraph cluster_outer {
+        label = "Outer Container";
+        style = filled;
+        color = lightgray;
+        
+        // Node in outer subgraph
+        outer_node [label="Outer Node"];
+        
+        subgraph cluster_inner {
+            label = "Inner Container";
+            style = filled;
+            color = lightblue;
+            
+            // Nodes in inner subgraph
+            inner_a [label="Inner A"];
+            inner_b [label="Inner B"];
+            inner_c [label="Inner C"];
+            
+            // Connections within inner subgraph
+            inner_a -> inner_b;
+            inner_b -> inner_c;
+        }
+        
+        // Connection from outer to inner
+        outer_node -> inner_a;
+    }
+    
+    // Global node connecting to nested structure
+    start -> outer_node;
+    inner_c -> end;
+    
+    start [shape=diamond];
+    end [shape=square];
+}

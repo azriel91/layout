@@ -3,7 +3,9 @@
 use super::html::{parse_html_string, HtmlGrid};
 use super::parser::ast::DotString;
 use super::record::record_builder;
+use crate::adt::dag::find_common_subgraph;
 use crate::adt::dag::NodeHandle;
+use crate::adt::dag::SubgraphHandle;
 use crate::adt::map::ScopedMap;
 use crate::core::base::Orientation;
 use crate::core::color::Color;
@@ -31,14 +33,231 @@ struct EdgeDesc {
     to_port: Option<String>,
 }
 
+#[derive(Debug, Clone)]
+pub struct SubgraphBuilder {
+    global_state: PropertyList,
+    node_order: Vec<(Vec<String>, NodeOrSubgraph)>,
+    name: String,
+    orientation: Orientation,
+}
+impl SubgraphBuilder {
+    pub fn from_ast(name: String) -> Self {
+        // let mut subgraph_stack = subgraph_stack.clone();
+        // subgraph_stack.push(graph.name.clone());
+        let subgraph_builder = SubgraphBuilder {
+            global_state: PropertyList::new(),
+            name,
+            node_order: Vec::new(),
+            // name: graph.name.clone(),
+            orientation: Orientation::TopToBottom,
+        };
+        subgraph_builder
+    }
+
+    pub fn get(
+        &self,
+        graph_builder: &GraphBuilder,
+        vg: &mut VisualGraph,
+        subgraph_in: usize,
+        node_map: &mut HashMap<String, (Vec<SubgraphHandle>, NodeHandle)>,
+        subgraph_map: &mut HashMap<
+            String,
+            (Vec<SubgraphHandle>, SubgraphHandle),
+        >,
+    ) {
+        for (subgraph_chain, name) in &self.node_order {
+            match name {
+                NodeOrSubgraph::Node(name) => {
+                    let node_prop = graph_builder.nodes.get(name).unwrap();
+                    let element = GraphBuilder::get_shape_from_attributes(
+                        self.orientation,
+                        node_prop,
+                        name,
+                    );
+                    let subgraph_chain = subgraph_chain
+                        .iter()
+                        .map(|x| subgraph_map.get(x).unwrap().1)
+                        .collect::<Vec<SubgraphHandle>>();
+
+                    let subgraph_idx = subgraph_chain.last().unwrap().clone();
+
+                    let handle = vg.add_node(element, subgraph_idx);
+
+                    node_map.insert(name.clone(), (subgraph_chain, handle));
+                }
+                NodeOrSubgraph::Subgraph(name) => {
+                    let subgraph_builder =
+                        graph_builder.subgraphs.get(name).unwrap();
+                    let subgraph_chain_handle = subgraph_chain
+                        .iter()
+                        .map(|x| subgraph_map.get(x).unwrap().1)
+                        .collect::<Vec<SubgraphHandle>>();
+                    let subgraph_idx =
+                        subgraph_chain_handle.last().unwrap().clone();
+                    let handle = vg.add_subgraph(
+                        self.orientation,
+                        name.clone(),
+                        subgraph_idx,
+                    );
+
+                    // let subgraph_chain_handle = subgraph_chain.iter()
+                    //     .map(|x| subgraph_map.get(x).unwrap().1)
+                    //     .collect::<Vec<SubgraphHandle>>();
+                    subgraph_map
+                        .insert(name.clone(), (subgraph_chain_handle, handle));
+
+                    subgraph_builder.get(
+                        graph_builder,
+                        vg,
+                        subgraph_in,
+                        node_map,
+                        subgraph_map,
+                    );
+                }
+            }
+        }
+    }
+
+    pub fn visit_graph(
+        &mut self,
+        graph: &ast::Graph,
+        graph_builder: &mut GraphBuilder,
+    ) {
+        graph_builder.global_attr.push();
+        graph_builder.node_attr.push();
+        graph_builder.edge_attr.push();
+        graph_builder.subgraph_stack.push(graph.name.clone());
+        for stmt in &graph.list.list {
+            self.visit_stmt(stmt, graph_builder);
+        }
+        graph_builder.subgraph_stack.pop();
+
+        self.global_state = graph_builder.global_attr.flatten();
+        graph_builder.global_attr.pop();
+        graph_builder.node_attr.pop();
+        graph_builder.edge_attr.pop();
+    }
+
+    pub fn visit_stmt(
+        &mut self,
+        stmt: &ast::Stmt,
+        graph_builder: &mut GraphBuilder,
+    ) {
+        match stmt {
+            ast::Stmt::Edge(e) => {
+                self.visit_edge(e, graph_builder);
+            }
+            ast::Stmt::Node(n) => {
+                self.visit_node(n, graph_builder);
+            }
+            ast::Stmt::Attribute(a) => {
+                self.visit_att(a, graph_builder);
+            }
+            ast::Stmt::Subgraph(g) => {
+                let mut subgraph_builder =
+                    SubgraphBuilder::from_ast(g.name.clone());
+                self.node_order.push((
+                    graph_builder.subgraph_stack.clone(),
+                    NodeOrSubgraph::Subgraph(g.name.clone()),
+                ));
+                subgraph_builder.visit_graph(g, graph_builder);
+                graph_builder
+                    .subgraphs
+                    .insert(g.name.clone(), subgraph_builder);
+            }
+        }
+    }
+
+    pub fn visit_edge(
+        &mut self,
+        e: &ast::EdgeStmt,
+        graph_builder: &mut GraphBuilder,
+    ) {
+        graph_builder.edge_attr.push();
+
+        for att in e.list.iter() {
+            graph_builder.edge_attr.insert(&att.0, &att.1);
+        }
+
+        graph_builder.init_node_with_name(&e.from.name, false, self);
+
+        let mut prev = &e.from.name;
+        for dest in &e.to {
+            let curr = &dest.0.name;
+            graph_builder.init_node_with_name(curr, false, self);
+
+            let has_arrow = matches!(dest.1, ast::ArrowKind::Arrow);
+            let prop_list = graph_builder.edge_attr.flatten();
+            let edge = EdgeDesc {
+                from: prev.clone(),
+                to: curr.clone(),
+                props: prop_list,
+                is_directed: has_arrow,
+                from_port: e.from.port.clone(),
+                to_port: dest.0.port.clone(),
+            };
+            graph_builder.edges.push(edge);
+            prev = curr;
+        }
+        graph_builder.edge_attr.pop();
+    }
+
+    pub fn visit_node(
+        &mut self,
+        n: &ast::NodeStmt,
+        graph_builder: &mut GraphBuilder,
+    ) {
+        graph_builder.node_attr.push();
+
+        for att in n.list.iter() {
+            graph_builder.node_attr.insert(&att.0, &att.1);
+        }
+
+        graph_builder.init_node_with_name(&n.id.name, true, self);
+        graph_builder.node_attr.pop();
+    }
+
+    pub fn visit_att(
+        &mut self,
+        att: &ast::AttrStmt,
+        graph_builder: &mut GraphBuilder,
+    ) {
+        match att.target {
+            ast::AttrStmtTarget::Graph => {
+                for att in att.list.iter() {
+                    graph_builder.global_attr.insert(&att.0, &att.1);
+                }
+            }
+            ast::AttrStmtTarget::Node => {
+                for att in att.list.iter() {
+                    graph_builder.node_attr.insert(&att.0, &att.1);
+                }
+            }
+            ast::AttrStmtTarget::Edge => {
+                for att in att.list.iter() {
+                    graph_builder.edge_attr.insert(&att.0, &att.1);
+                }
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+enum NodeOrSubgraph {
+    Node(String),
+    Subgraph(String),
+}
+
 /// This class constructs a visual graph from the parsed AST.
 #[derive(Debug)]
 pub struct GraphBuilder {
     // This records the state of the top-level graph.
-    global_state: PropertyList,
+    // global_state: PropertyList,
+    main_graph: SubgraphBuilder,
+    subgraph_stack: Vec<String>,
     // This keeps track of the construction order of the nodes, because
+    subgraphs: HashMap<String, SubgraphBuilder>,
     // hashmap does not maintain a persistent iteration order.
-    node_order: Vec<String>,
     // Maps node names to their property list.
     nodes: HashMap<String, PropertyList>,
     // A list of edge properties.
@@ -57,9 +276,16 @@ impl Default for GraphBuilder {
 
 impl GraphBuilder {
     pub fn new() -> Self {
-        Self {
+        let main_graph = SubgraphBuilder {
             global_state: PropertyList::new(),
             node_order: Vec::new(),
+            name: String::from("main"),
+            orientation: Orientation::TopToBottom,
+        };
+        Self {
+            main_graph,
+            subgraphs: HashMap::new(),
+            subgraph_stack: Vec::new(),
             nodes: HashMap::new(),
             edges: Vec::new(),
             global_attr: ScopedMap::new(),
@@ -68,72 +294,19 @@ impl GraphBuilder {
         }
     }
     pub fn visit_graph(&mut self, graph: &ast::Graph) {
-        self.global_attr.push();
-        self.node_attr.push();
-        self.edge_attr.push();
-        for stmt in &graph.list.list {
-            self.visit_stmt(stmt);
-        }
-
-        // TODO: we dump the property list when we close the scope. This is not
-        // correct for sub graphs.
-        self.global_state = self.global_attr.flatten();
-
-        self.global_attr.pop();
-        self.node_attr.pop();
-        self.edge_attr.pop();
-    }
-    fn visit_stmt(&mut self, stmt: &ast::Stmt) {
-        match stmt {
-            ast::Stmt::Edge(e) => {
-                self.visit_edge(e);
-            }
-            ast::Stmt::Node(n) => {
-                self.visit_node(n);
-            }
-            ast::Stmt::Attribute(a) => {
-                self.visit_att(a);
-            }
-            ast::Stmt::SubGraph(g) => {
-                self.visit_graph(g);
-            }
-        }
-    }
-
-    fn visit_edge(&mut self, e: &ast::EdgeStmt) {
-        self.edge_attr.push();
-
-        for att in e.list.iter() {
-            self.edge_attr.insert(&att.0, &att.1);
-        }
-
-        self.init_node_with_name(&e.from.name, false);
-
-        let mut prev = &e.from.name;
-        for dest in &e.to {
-            let curr = &dest.0.name;
-            self.init_node_with_name(curr, false);
-
-            let has_arrow = matches!(dest.1, ast::ArrowKind::Arrow);
-            let prop_list = self.edge_attr.flatten();
-
-            let edge = EdgeDesc {
-                from: prev.clone(),
-                to: curr.clone(),
-                props: prop_list,
-                is_directed: has_arrow,
-                from_port: e.from.port.clone(),
-                to_port: dest.0.port.clone(),
-            };
-            self.edges.push(edge);
-            prev = curr;
-        }
-        self.edge_attr.pop();
+        let mut main_graph = SubgraphBuilder::from_ast(graph.name.clone());
+        main_graph.visit_graph(graph, self);
+        self.main_graph = main_graph;
     }
 
     // If \p overwrite is set then we are declaring a node. This means that
     // we need to update the properties that already exist.
-    fn init_node_with_name(&mut self, name: &str, overwrite: bool) {
+    fn init_node_with_name(
+        &mut self,
+        name: &str,
+        overwrite: bool,
+        subgraph_builder: &mut SubgraphBuilder,
+    ) {
         let node_attr = self.node_attr.flatten();
 
         if let Option::Some(prop_list) = self.nodes.get_mut(name) {
@@ -144,39 +317,11 @@ impl GraphBuilder {
                 prop_list.insert(p.0, p.1);
             }
         } else {
-            self.node_order.push(name.to_string());
+            subgraph_builder.node_order.push((
+                self.subgraph_stack.clone(),
+                NodeOrSubgraph::Node(name.to_string()),
+            ));
             self.nodes.insert(name.to_string(), node_attr);
-        }
-    }
-
-    fn visit_node(&mut self, n: &ast::NodeStmt) {
-        self.node_attr.push();
-
-        for att in n.list.iter() {
-            self.node_attr.insert(&att.0, &att.1);
-        }
-
-        self.init_node_with_name(&n.id.name, true);
-        self.node_attr.pop();
-    }
-
-    fn visit_att(&mut self, att: &ast::AttrStmt) {
-        match att.target {
-            ast::AttrStmtTarget::Graph => {
-                for att in att.list.iter() {
-                    self.global_attr.insert(&att.0, &att.1);
-                }
-            }
-            ast::AttrStmtTarget::Node => {
-                for att in att.list.iter() {
-                    self.node_attr.insert(&att.0, &att.1);
-                }
-            }
-            ast::AttrStmtTarget::Edge => {
-                for att in att.list.iter() {
-                    self.edge_attr.insert(&att.0, &att.1);
-                }
-            }
         }
     }
 
@@ -185,29 +330,34 @@ impl GraphBuilder {
 
         // Set the graph orientation based on the 'rankdir' property.
         if let Option::Some(DotString::String(rd)) =
-            self.global_state.get("rankdir")
+            self.main_graph.global_state.get("rankdir")
         {
             if rd == "LR" {
                 dir = Orientation::LeftToRight;
             }
         }
-
         let mut vg = VisualGraph::new(dir);
 
         // Keeps track of the newly created nodes and indexes them by name.
-        let mut node_map: HashMap<String, NodeHandle> = HashMap::new();
+        let mut node_map = HashMap::new();
+        let mut subgraph_map = HashMap::new();
 
-        assert_eq!(self.nodes.len(), self.node_order.len());
+        subgraph_map.insert(
+            self.main_graph.name.clone(),
+            (
+                Vec::new(),
+                vg.add_subgraph(
+                    self.main_graph.orientation,
+                    self.main_graph.name.clone(),
+                    SubgraphHandle::new(0),
+                ),
+            ),
+        );
 
-        // Create and register all of the nodes.
-        for node_name in self.node_order.iter() {
-            let node_prop = self.nodes.get(node_name).unwrap();
+        self.main_graph
+            .get(self, &mut vg, 0, &mut node_map, &mut subgraph_map);
 
-            let shape =
-                Self::get_shape_from_attributes(dir, node_prop, node_name);
-            let handle = vg.add_node(shape);
-            node_map.insert(node_name.to_string(), handle);
-        }
+        // assert_eq!(self.nodes.len(), self.node_order.len());
 
         // Create and register all of the edges.
         for edge_prop in &self.edges {
@@ -219,7 +369,11 @@ impl GraphBuilder {
             );
             let from = node_map.get(&edge_prop.from).unwrap();
             let to = node_map.get(&edge_prop.to).unwrap();
-            vg.add_edge(shape, *from, *to);
+
+            let (from_u, to_u) =
+                find_common_subgraph(&from.0, from.1, &to.0, to.1);
+
+            vg.add_edge(shape.clone(), from.1, from_u, to.1, to_u);
         }
 
         vg

@@ -1,0 +1,142 @@
+digraph parallel_subgraphs {
+    // Test case: Multiple parallel subgraph hierarchies
+    // Testing layout with several independent nested structures
+    
+    // Parallel branch 1: Data processing pipeline
+    subgraph cluster_data_pipeline {
+        label = "Data Processing Pipeline";
+        style = filled;
+        color = lightblue;
+        
+        subgraph cluster_ingestion {
+            label = "Data Ingestion";
+            style = filled;
+            color = lightcyan;
+            
+            ingest_api [label="API Endpoint"];
+            ingest_queue [label="Message Queue"];
+            ingest_validator [label="Data Validator"];
+            
+            ingest_api -> ingest_queue -> ingest_validator;
+        }
+        
+        subgraph cluster_processing {
+            label = "Data Processing";
+            style = filled;
+            color = lightsteelblue;
+            
+            process_transform [label="Transform"];
+            process_enrich [label="Enrich"];
+            process_aggregate [label="Aggregate"];
+            
+            process_transform -> process_enrich -> process_aggregate;
+        }
+        
+        subgraph cluster_storage {
+            label = "Data Storage";
+            style = filled;
+            color = lightgray;
+            
+            storage_warehouse [label="Data Warehouse"];
+            storage_lake [label="Data Lake"];
+            storage_mart [label="Data Mart"];
+            
+            storage_warehouse -> storage_mart;
+            storage_lake -> storage_mart;
+        }
+    }
+    
+    // Parallel branch 2: Machine learning pipeline
+    subgraph cluster_ml_pipeline {
+        label = "ML Pipeline";
+        style = filled;
+        color = lightgreen;
+        
+        subgraph cluster_training {
+            label = "Model Training";
+            style = filled;
+            color = lightseagreen;
+            
+            train_data_prep [label="Data Preparation"];
+            train_feature_eng [label="Feature Engineering"];
+            train_model [label="Model Training"];
+            train_validation [label="Model Validation"];
+            
+            train_data_prep -> train_feature_eng -> train_model -> train_validation;
+        }
+        
+        subgraph cluster_deployment {
+            label = "Model Deployment";
+            style = filled;
+            color = lightgoldenrodyellow;
+            
+            deploy_package [label="Model Package"];
+            deploy_registry [label="Model Registry"];
+            deploy_service [label="Inference Service"];
+            
+            deploy_package -> deploy_registry -> deploy_service;
+        }
+        
+        subgraph cluster_monitoring_ml {
+            label = "ML Monitoring";
+            style = filled;
+            color = lightyellow;
+            
+            monitor_drift [label="Data Drift"];
+            monitor_performance [label="Model Performance"];
+            monitor_feedback [label="Feedback Loop"];
+            
+            monitor_drift -> monitor_performance -> monitor_feedback;
+        }
+    }
+    
+    // Parallel branch 3: User interface system
+    subgraph cluster_ui_system {
+        label = "UI System";
+        style = filled;
+        color = lightcoral;
+        
+        subgraph cluster_web_app {
+            label = "Web Application";
+            style = filled;
+            color = lightsalmon;
+            
+            web_frontend [label="Frontend"];
+            web_router [label="Router"];
+            web_components [label="Components"];
+            
+            web_frontend -> web_router -> web_components;
+        }
+        
+        subgraph cluster_mobile_app {
+            label = "Mobile Application";
+            style = filled;
+            color = lightpink;
+            
+            mobile_native [label="Native App"];
+            mobile_api [label="Mobile API"];
+            mobile_push [label="Push Notifications"];
+            
+            mobile_native -> mobile_api -> mobile_push;
+        }
+    }
+    
+    // Cross-pipeline connections showing dependencies
+    start -> ingest_api;
+    start -> train_data_prep;
+    start -> web_frontend;
+    
+    // Data flow between pipelines
+    storage_mart -> train_data_prep;
+    deploy_service -> web_components;
+    deploy_service -> mobile_api;
+    
+    // Monitoring connections
+    monitor_performance -> admin_dashboard;
+    process_aggregate -> analytics_dashboard;
+    
+    // External nodes
+    start [shape=diamond, label="System Start"];
+    admin_dashboard [shape=rectangle, label="Admin Dashboard"];
+    analytics_dashboard [shape=rectangle, label="Analytics Dashboard"];
+}

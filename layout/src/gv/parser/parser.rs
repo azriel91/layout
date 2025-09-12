@@ -195,8 +195,7 @@ impl DotParser {
             }
             Token::SubgraphKW => {
                 let subgraph = self.parse_graph(true)?;
-                let ns = ast::Stmt::SubGraph(subgraph);
-                Result::Ok(ns)
+                Result::Ok(ast::Stmt::Subgraph(subgraph))
             }
             //attr_stmt : (graph | node | edge) attr_list
             Token::GraphKW => {
@@ -223,7 +222,7 @@ impl DotParser {
                 self.lex();
                 let mut graph = ast::Graph::new("anonymous");
                 graph.list = self.parse_stmt_list()?;
-                Result::Ok(ast::Stmt::SubGraph(graph))
+                Result::Ok(ast::Stmt::Subgraph(graph))
             }
 
             _ => to_error("Unknown token"),

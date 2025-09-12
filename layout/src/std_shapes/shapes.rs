@@ -4,6 +4,7 @@
 //! This includes things like font size, and color.
 
 use crate::core::base::Orientation;
+use crate::core::color::Color;
 use crate::core::format::Visible;
 use crate::core::geometry::{Point, Position};
 use crate::core::style::{LineStyleKind, StyleAttr};
@@ -135,6 +136,44 @@ impl Element {
 
     pub fn empty_connector(dir: Orientation) -> Element {
         Self::create_connector("", &StyleAttr::simple(), dir)
+    }
+
+    pub fn placeholder(orientation: Orientation) -> Element {
+        Element {
+            shape: ShapeKind::None(ShapeContent::String(String::new())),
+            look: StyleAttr::simple(),
+            orientation,
+            pos: Position::new(
+                Point::zero(),
+                Point::zero(),
+                Point::zero(),
+                Point::splat(PADDING),
+            ),
+            properties: Option::None,
+        }
+    }
+
+    pub fn create_subgraph(
+        orientation: Orientation,
+        name: String,
+        look: &StyleAttr,
+    ) -> Element {
+        let mut look = look.clone();
+        look.line_color = Color::from_name("black").unwrap();
+        // look.fill_color = Color::from_name("blue");
+        println!("Creating subgraph with look: {:?}", look);
+        Element {
+            shape: ShapeKind::Box(ShapeContent::String(name)),
+            look: look.clone(),
+            orientation,
+            pos: Position::new(
+                Point::new(25., 25.),
+                Point::new(20., 20.),
+                Point::new(25., 25.),
+                Point::splat(PADDING),
+            ),
+            properties: Option::None,
+        }
     }
 
     // Make the center of the shape point to \p to.

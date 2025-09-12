@@ -1,0 +1,61 @@
+digraph disconnected_subgraph {
+    // Test case: Nested subgraph with disconnected components
+    // Multiple disconnected subgraphs within larger containers
+    
+    subgraph cluster_main {
+        label = "Main Container";
+        style = filled;
+        color = lightgray;
+        
+        // First disconnected component within main
+        subgraph cluster_component1 {
+            label = "Component 1";
+            style = filled;
+            color = lightblue;
+            
+            comp1_a [label="Comp1 A"];
+            comp1_b [label="Comp1 B"];
+            comp1_c [label="Comp1 C"];
+            
+            comp1_a -> comp1_b;
+            comp1_b -> comp1_c;
+        }
+        
+        // Second disconnected component within main
+        subgraph cluster_component2 {
+            label = "Component 2";
+            style = filled;
+            color = lightgreen;
+            
+            comp2_x [label="Comp2 X"];
+            comp2_y [label="Comp2 Y"];
+            
+            comp2_x -> comp2_y;
+        }
+        
+        // Third isolated component (no internal connections)
+        subgraph cluster_component3 {
+            label = "Component 3 (Isolated)";
+            style = filled;
+            color = lightyellow;
+            
+            comp3_isolated1 [label="Isolated 1"];
+            comp3_isolated2 [label="Isolated 2"];
+            comp3_isolated3 [label="Isolated 3"];
+        }
+        
+        // Standalone node in main container
+        main_standalone [label="Main Standalone"];
+    }
+    
+    // External connections to create overall connectivity
+    external_start -> comp1_a;
+    comp1_c -> external_end;
+    external_start -> comp2_x;
+    external_start -> main_standalone;
+    
+    // Note: Component 3 remains disconnected internally and externally
+    
+    external_start [shape=diamond, label="Start"];
+    external_end [shape=square, label="End"];
+}

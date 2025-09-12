@@ -1,0 +1,97 @@
+digraph nested_disconnected_complex {
+    // Test case: Complex nested structure with multiple disconnected components
+    // at different nesting levels
+    
+    subgraph cluster_outer1 {
+        label = "Outer Container 1";
+        style = filled;
+        color = lightgray;
+        
+        subgraph cluster_inner1a {
+            label = "Inner 1A";
+            style = filled;
+            color = lightblue;
+            
+            // Connected component
+            i1a_1 -> i1a_2 -> i1a_3;
+            i1a_1 [label="I1A-1"];
+            i1a_2 [label="I1A-2"];
+            i1a_3 [label="I1A-3"];
+        }
+        
+        subgraph cluster_inner1b {
+            label = "Inner 1B (Disconnected)";
+            style = filled;
+            color = lightcoral;
+            
+            // Disconnected nodes within this subgraph
+            i1b_isolated1 [label="I1B-Isolated1"];
+            i1b_isolated2 [label="I1B-Isolated2"];
+            i1b_connected1 [label="I1B-Connected1"];
+            i1b_connected2 [label="I1B-Connected2"];
+            
+            // Only partial connectivity within subgraph
+            i1b_connected1 -> i1b_connected2;
+        }
+        
+        outer1_node [label="Outer1 Node"];
+        outer1_node -> i1a_1;
+    }
+    
+    subgraph cluster_outer2 {
+        label = "Outer Container 2";
+        style = filled;
+        color = lightgreen;
+        
+        subgraph cluster_inner2a {
+            label = "Inner 2A";
+            style = filled;
+            color = lightyellow;
+            
+            subgraph cluster_deep2a {
+                label = "Deep 2A";
+                style = filled;
+                color = lightpink;
+                
+                // Deeply nested disconnected components
+                deep2a_1 [label="Deep2A-1"];
+                deep2a_2 [label="Deep2A-2"];
+                deep2a_isolated [label="Deep2A-Isolated"];
+                
+                deep2a_1 -> deep2a_2;
+            }
+            
+            inner2a_node [label="Inner2A Node"];
+            inner2a_node -> deep2a_1;
+        }
+        
+        // Completely isolated subgraph within outer2
+        subgraph cluster_inner2b_isolated {
+            label = "Inner 2B (Completely Isolated)";
+            style = filled;
+            color = lightsteelblue;
+            
+            i2b_iso1 [label="I2B-Iso1"];
+            i2b_iso2 [label="I2B-Iso2"];
+            i2b_iso3 [label="I2B-Iso3"];
+            
+            // Some internal connections but no external ones
+            i2b_iso1 -> i2b_iso2;
+        }
+        
+        outer2_node [label="Outer2 Node"];
+        outer2_node -> inner2a_node;
+    }
+    
+    // Global connectivity
+    global_start -> outer1_node;
+    global_start -> outer2_node;
+    i1a_3 -> outer2_node;
+    deep2a_2 -> global_end;
+    
+    // Cross-subgraph connection
+    i1b_connected2 -> inner2a_node;
+    
+    global_start [shape=triangle, label="Global Start"];
+    global_end [shape=invtriangle, label="Global End"];
+}
